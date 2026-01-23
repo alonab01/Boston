@@ -13,9 +13,6 @@ RUN sed -i 's|deb.debian.org|archive.debian.org|g' /etc/apt/sources.list && \
 WORKDIR /workspace
 COPY . /workspace
 
-
-COPY runsc /gvisor/bin/runsc
-
 RUN make
 
 CMD ["nginx", "-g", "daemon off;"]

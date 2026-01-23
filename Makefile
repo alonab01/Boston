@@ -1,5 +1,5 @@
 
-all: spy_on read_page cycle_jump spy_on_diff
+all: spy_on read_page spy_on_diff
 
 dkr: 
 	sudo docker build -t union-buster .
@@ -21,13 +21,8 @@ spy_on: spy_on.c
 spy_on_diff: spy_on_diff.c
 	gcc -o spy_on_diff spy_on_diff.c
 
-
 read_page: read_page.c
 	gcc -o read_page read_page.c
 
-
-cycle_jump: cycle_jump.c
-	gcc -o cycle_jump cycle_jump.c
-
 clean:
-	rm -f spy_on read_page cycle_jump
+	rm -f spy_on read_page spy_on_diff
