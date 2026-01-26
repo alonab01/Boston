@@ -2,11 +2,10 @@
 
 #read first argument 
 TARGET_PAGE=$1
-MEASURE_PAGE_COUNT=$2
 TARGET_PATH="/usr/sbin/nginx-debug"
 
-if [ ! -z $3 ]; then
-   TARGET_PATH=$3
+if [ ! -z $2 ]; then
+   TARGET_PATH=$2
 fi
 
 

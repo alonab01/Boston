@@ -1,8 +1,4 @@
 #!/usr/bin/bash
-# Script to reproduce the main results locally.
-#
-# Author: Novak Boskov <boskov@bu.edu>
-# Date: February 2022.
 
 TARGET_PAGE=0 # default value
 
