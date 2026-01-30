@@ -19,9 +19,8 @@
 
 static inline uint64_t tsc_start(void) {
     unsigned hi, lo;
-    // CPUID serializes before RDTSC
     __asm__ __volatile__(
-        "cpuid\n\t"
+        "cpuid\n\t"        // serialize before
         "rdtsc\n\t"
         : "=a"(lo), "=d"(hi)
         : "a"(0)
@@ -32,15 +31,15 @@ static inline uint64_t tsc_start(void) {
 
 static inline uint64_t tsc_end(void) {
     unsigned hi, lo;
-    // RDTSCP waits for previous instructions; CPUID serializes after
     __asm__ __volatile__(
-        "rdtscp\n\t"
+        "lfence\n\t"       // serialize before read
+        "rdtsc\n\t"
         : "=a"(lo), "=d"(hi)
         :
-        : "rcx", "memory"
+        : "memory"
     );
     __asm__ __volatile__(
-        "cpuid\n\t"
+        "cpuid\n\t"        // serialize after
         :
         : "a"(0)
         : "rbx", "rcx", "rdx", "memory"

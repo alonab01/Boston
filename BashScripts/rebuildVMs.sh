@@ -10,6 +10,7 @@ qemu-system-x86_64 \
 -drive file=$VM_PATH/base.qcow2,if=virtio \
 -boot c \
 -nic user,hostfwd=tcp:127.0.0.1:2222-:22&
+-cpu host
 
 sleep 20  # wait for VM to boot up
 
