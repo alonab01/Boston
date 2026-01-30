@@ -4,24 +4,24 @@ set -euo pipefail
 VM_PATH="/home/alonab01/vms"
 USER="alonab01"
 TARGET_FILE="/boot/initrd.img-6.8.0-90-generic"
-TARGET_PAGE_RANGE="4"
+TARGET_PAGE_RANGE="4-10"
 SSH_OPTS="-T -q -o LogLevel=ERROR -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
 
 mkdir -p out
 
 echo "Starting two VMs (vmA and vmB)..."
 
-# qemu-system-x86_64 -enable-kvm -m 2048 \
-#   -drive file="$VM_PATH/vmA.qcow2",if=virtio \
-#   -boot c \
-#   -nic user,hostfwd=tcp:127.0.0.1:2222-:22 >/dev/null 2>&1 &
+qemu-system-x86_64 -enable-kvm -m 2048 \
+  -drive file="$VM_PATH/vmA.qcow2",if=virtio \
+  -boot c \
+  -nic user,hostfwd=tcp:127.0.0.1:2222-:22 >/dev/null 2>&1 &
 
-# qemu-system-x86_64 -enable-kvm -m 2048 \
-#   -drive file="$VM_PATH/vmB.qcow2",if=virtio \
-#   -boot c \
-#   -nic user,hostfwd=tcp:127.0.0.1:2223-:22 >/dev/null 2>&1 &
+qemu-system-x86_64 -enable-kvm -m 2048 \
+  -drive file="$VM_PATH/base.qcow2",if=virtio \
+  -boot c \
+  -nic user,hostfwd=tcp:127.0.0.1:2223-:22 >/dev/null 2>&1 &
 
-# sleep 45
+sleep 45
 
 drop_caches_host() {
   sync

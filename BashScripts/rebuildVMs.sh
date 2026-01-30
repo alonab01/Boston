@@ -12,11 +12,12 @@ qemu-system-x86_64 \
 -nic user,hostfwd=tcp:127.0.0.1:2222-:22&
 -cpu host
 
-sleep 20  # wait for VM to boot up
+sleep 40  # wait for VM to boot up
 
 #pull git repo again and rebuild unionbuster
 ssh -p 2222 $USER@localhost << EOF
     cd ~/Documents/Boston
+    git checkout basic-check
     git pull
     make clean
     make
