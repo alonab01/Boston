@@ -3,25 +3,25 @@ set -euo pipefail
 
 VM_PATH="/home/alonab01/vms"
 USER="alonab01"
-TARGET_FILE="results/txt/qemu_p0_50.txt"
-TARGET_PAGE_RANGE="0"
+TARGET_FILE="/boot/initrd.img-6.8.0-90-generic"
+TARGET_PAGE_RANGE="4"
 SSH_OPTS="-T -q -o LogLevel=ERROR -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
 
 mkdir -p out
 
 echo "Starting two VMs (vmA and vmB)..."
 
-qemu-system-x86_64 -enable-kvm -m 2048 \
-  -drive file="$VM_PATH/vmA.qcow2",if=virtio \
-  -boot c \
-  -nic user,hostfwd=tcp:127.0.0.1:2222-:22 >/dev/null 2>&1 &
+# qemu-system-x86_64 -enable-kvm -m 2048 \
+#   -drive file="$VM_PATH/vmA.qcow2",if=virtio \
+#   -boot c \
+#   -nic user,hostfwd=tcp:127.0.0.1:2222-:22 >/dev/null 2>&1 &
 
-qemu-system-x86_64 -enable-kvm -m 2048 \
-  -drive file="$VM_PATH/vmB.qcow2",if=virtio \
-  -boot c \
-  -nic user,hostfwd=tcp:127.0.0.1:2223-:22 >/dev/null 2>&1 &
+# qemu-system-x86_64 -enable-kvm -m 2048 \
+#   -drive file="$VM_PATH/vmB.qcow2",if=virtio \
+#   -boot c \
+#   -nic user,hostfwd=tcp:127.0.0.1:2223-:22 >/dev/null 2>&1 &
 
-sleep 45
+# sleep 45
 
 drop_caches_host() {
   sync
@@ -32,7 +32,7 @@ drop_caches_host() {
 drop_caches_vm() {
   local port="$1"
   ssh $SSH_OPTS -p "$port" "$USER@localhost" \
-    "sync; echo 1 | sudo tee /proc/sys/vm/drop_caches >/dev/null" 2>/dev/null
+    " echo 1 | sudo tee /proc/sys/vm/drop_caches >/dev/null" 2>/dev/null
     sleep 0.1
 }
 
@@ -70,7 +70,7 @@ drop_caches_host
 
 echo "Section 1: vmA reads from disk (host cache dropped each round)"
 : > out/section1_vmA.csv
-for i in {1..100}; do
+for i in {1..30}; do
   read_page_vm 2222 >> out/section1_vmA.csv
   drop_caches_vm 2222
   drop_caches_host
@@ -82,7 +82,7 @@ append_stats out/section1_vmA.csv
 
 echo "Section 2: vmB reads then vmA reads (host cache dropped before vmB)"
 : > out/section2_vmB_vmA.csv
-for i in {1..100}; do
+for i in {1..30}; do
   drop_caches_host
   read_page_vm 2223 > /dev/null
   read_page_vm 2222 >> out/section2_vmB_vmA.csv
