@@ -106,9 +106,10 @@ struct pread_ctx {
 
 static inline uint64_t probe_pread(void *vctx, off_t off) {
     struct pread_ctx *ctx = (struct pread_ctx *)vctx;
-
+    // page_sz = sysconf(_SC_PAGESIZE);
     uint64_t t0 = tsc_start();
     (void)pread(ctx->fd, ctx->buf, 1, off);   // ONLY the read syscall inside timing
+    // (void)pread(ctx->fd, ctx->buf, page_sz, off);   // ONLY the read syscall inside timing
     uint64_t t1 = tsc_end();
 
     return t1 - t0;
