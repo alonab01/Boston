@@ -1,206 +1,220 @@
+// read_page.c
 #define _GNU_SOURCE
-
-#include<stdio.h>
-#include<time.h>
-#include<unistd.h>
-#include<string.h>
-#include <sys/mman.h>
-#include <sys/stat.h>
 #include <errno.h>
 #include <fcntl.h>
-#include <stdlib.h>
+#include <inttypes.h>
 #include <stdbool.h>
-#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/mman.h>
+#include <sys/stat.h>
+#include <unistd.h>
 
-#include <sys/types.h>
+#if !defined(__x86_64__) && !defined(__i386__)
+#error "This timing code (RDTSC/RDTSCP/CPUID) is x86-only."
+#endif
 
-#define USE_RDTSC
+// -------------------- robust cycle timer: CPUID;RDTSC  ...  RDTSCP;CPUID --------------------
 
-
-static int PAGE_SIZE;
-
-
-static inline uint64_t rdtsc(void) {
+static inline uint64_t tsc_start(void) {
     unsigned hi, lo;
-    // serialize before reading tsc
-    asm volatile("lfence" ::: "memory");
-    asm volatile("rdtsc" : "=a"(lo), "=d"(hi));
+    // CPUID serializes before RDTSC
+    __asm__ __volatile__(
+        "cpuid\n\t"
+        "rdtsc\n\t"
+        : "=a"(lo), "=d"(hi)
+        : "a"(0)
+        : "rbx", "rcx", "memory"
+    );
     return ((uint64_t)hi << 32) | lo;
 }
 
-/* -------------------------------
-   CLOCK_REALTIME in nanoseconds
-   ------------------------------- */
-static inline uint64_t realtime_ns(void) {
-    struct timespec ts;
-    clock_gettime(CLOCK_REALTIME, &ts);
-    return (uint64_t)ts.tv_sec * 1000000000ULL + (uint64_t)ts.tv_nsec;
+static inline uint64_t tsc_end(void) {
+    unsigned hi, lo;
+    // RDTSCP waits for previous instructions; CPUID serializes after
+    __asm__ __volatile__(
+        "rdtscp\n\t"
+        : "=a"(lo), "=d"(hi)
+        :
+        : "rcx", "memory"
+    );
+    __asm__ __volatile__(
+        "cpuid\n\t"
+        :
+        : "a"(0)
+        : "rbx", "rcx", "rdx", "memory"
+    );
+    return ((uint64_t)hi << 32) | lo;
 }
 
-#ifdef USE_RDTSC
+static void die(const char *msg) {
+    perror(msg);
+    exit(1);
+}
 
-#define CLOCK_FUNC() \
-    realtime_ns()
+static void usage(const char *p) {
+    fprintf(stderr,
+        "Usage:\n"
+        "  %s <path> [page_num] [-p A-B|A] [-m]\n"
+        "  Pages are 0-based.\n"
+        "Options:\n"
+        "  -p RANGE   Example: -p 1-100 or -p 7\n"
+        "  -m         mmap+load (default: pread)\n",
+        p
+    );
+}
 
-#else
-#define CLOCK_FUNC() \
-    rdtsc()
+static bool parse_range(const char *s, long *a, long *b) {
+    char *dash = strchr(s, '-');
+    char *endp = NULL;
 
-#endif
+    errno = 0;
+    long x = strtol(s, &endp, 10);
+    if (errno || endp == s) return false;
 
-#define COUNTER_FUNC() \
-    rdtsc()
-
-
-
-int main(int argc, char *argv[]) {
-
-    int f_map;
-    int page_to_read = 0;
-    long file_sz;
-    size_t file_pgs;
-    struct stat f_map_stat;
-    size_t pg_size = sysconf(_SC_PAGESIZE);
-    char buff[pg_size];
-    bool verbose = false;
-    int arg_idx = 1;
-    
-    // Declare timing variables at function scope
-    clock_t seek_begin = 0, seek_end = 0;
-    uint64_t seek_begin_ns = 0, seek_end_ns = 0;
-    clock_t map_end = 0;
-    uint64_t map_end_ns = 0;
-
-    // Check for -v flag
-    if (argc >= 2 && strcmp(argv[1], "-v") == 0) {
-        verbose = true;
-        arg_idx = 2;
+    if (!dash) {
+        if (*endp != '\0') return false;
+        *a = x; *b = x;
+        return true;
     }
 
-    if (argc < arg_idx + 1) {
-        fprintf(stderr, "Usage: %s [-v] <file> [page_number]\n", argv[0]);
-        exit(EBADF);
+    errno = 0;
+    long y = strtol(dash + 1, &endp, 10);
+    if (errno || endp == dash + 1) return false;
+    if (*endp != '\0') return false;
+
+    *a = x; *b = y;
+    return true;
+}
+
+static bool is_num(const char *s) {
+    if (!s || !*s) return false;
+    char *e = NULL;
+    errno = 0;
+    (void)strtol(s, &e, 10);
+    return (!errno && e != s && *e == '\0');
+}
+
+// -------------------- probes: timed region contains ONLY the access --------------------
+
+typedef uint64_t (*probe_fn)(void *ctx, off_t off);
+
+struct pread_ctx {
+    int fd;
+    unsigned char *buf;
+};
+
+static inline uint64_t probe_pread(void *vctx, off_t off) {
+    struct pread_ctx *ctx = (struct pread_ctx *)vctx;
+
+    uint64_t t0 = tsc_start();
+    (void)pread(ctx->fd, ctx->buf, 1, off);   // ONLY the read syscall inside timing
+    uint64_t t1 = tsc_end();
+
+    return t1 - t0;
+}
+
+struct mmap_ctx {
+    volatile unsigned char *map;
+};
+
+static inline uint64_t probe_mmap(void *vctx, off_t off) {
+    struct mmap_ctx *ctx = (struct mmap_ctx *)vctx;
+    uint64_t t0 = tsc_start();
+    (void)ctx->map[off];      // volatile load (still forces the load)
+    uint64_t t1 = tsc_end();
+    return t1 - t0;
+}
+
+// -------------------- main --------------------
+
+int main(int argc, char **argv) {
+    if (argc < 2) { usage(argv[0]); return 2; }
+
+    const char *path = argv[1];
+
+    // Optional positional page_num
+    bool have_pos_page = false;
+    long pos_page = 0;
+    int opt_start = 2;
+    if (argc >= 3 && argv[2][0] != '-' && is_num(argv[2])) {
+        have_pos_page = true;
+        pos_page = strtol(argv[2], NULL, 10);
+        opt_start = 3;
     }
-    
-    if (argc == arg_idx + 2) {
-	page_to_read = atoi(argv[arg_idx + 1]);
-    }
 
-    //warm up timers
-    CLOCK_FUNC();
-    COUNTER_FUNC();
+    bool use_mmap = false;
+    bool have_range = false;
+    long ra = 0, rb = -1;
 
-
-
-    //time the open
-    clock_t open_begin = COUNTER_FUNC();
-    uint64_t open_begin_ns = CLOCK_FUNC();
-    f_map = open(argv[arg_idx], O_RDONLY );//| O_DIRECT | O_SYNC);
-    clock_t open_end = COUNTER_FUNC();
-    uint64_t open_end_ns = CLOCK_FUNC();
-
-
-    if (f_map == -1) {
-        fprintf(stderr, "Failed to open file %s\n", argv[arg_idx]);
-        exit(errno);
-    }
-
-    clock_t stat_begin = COUNTER_FUNC();
-    uint64_t stat_begin_ns = CLOCK_FUNC();
-    fstat(f_map, &f_map_stat);
-    clock_t stat_end = COUNTER_FUNC();
-    uint64_t stat_end_ns = CLOCK_FUNC();
-
-    file_pgs = (f_map_stat.st_size + (pg_size - 1)) / pg_size;
-
-    // The arguments to mmap are not of a great importance, we will
-    // use these pages just to spy on them. What we try to do here
-    // with mapping the file through PROT_WRITE and MAP_SHARED pages
-    // is to maximize the probability of being reclaimed. At the end
-    // of the day, the main reclaim decision is made by LRU
-    // priniciple.
-    clock_t map_begin = COUNTER_FUNC();
-    uint64_t map_begin_ns = CLOCK_FUNC();
-
-#if MMAP_FILE
-    void *mapped_to = mmap(NULL, f_map_stat.st_size,
-                           PROT_EXEC, MAP_SHARED, f_map, 0);
-
-    map_end = COUNTER_FUNC();
-    map_end_ns = CLOCK_FUNC();
-#endif
-    if (argc == arg_idx + 2)
-    {
-        seek_begin = COUNTER_FUNC();
-        seek_begin_ns = CLOCK_FUNC();
-        file_pgs = 1;
-	    lseek(f_map, pg_size * page_to_read, SEEK_SET);
-        seek_end = COUNTER_FUNC();
-        seek_end_ns = CLOCK_FUNC();
-    }
-    
-    for (size_t i = 0; i < file_pgs; i++)
-    {
-        
-        //double time_spent = 0.0;
-        clock_t begin = COUNTER_FUNC();
-        uint64_t begin_ns = CLOCK_FUNC();
-    
-            read(f_map, buff, pg_size);
-
-        clock_t end = COUNTER_FUNC();
-        uint64_t end_ns = CLOCK_FUNC();
-        
-        usleep(3000);
-
-    }
-    clock_t total_end = COUNTER_FUNC();
-    uint64_t total_end_ns = CLOCK_FUNC();
-
-    // Print CSV header if verbose
-    if (verbose) {
-        printf("page_size,filename,open_cycles,open_ns,open_ratio,stat_cycles,stat_ns,stat_ratio,file_pages");
-#if MMAP_FILE
-        printf(",map_cycles,map_ns,map_ratio");
-#endif
-        if (argc == arg_idx + 2) {
-            printf(",seek_pos,page_number,seek_cycles,seek_ns,seek_ratio");
+    optind = opt_start;
+    int c;
+    while ((c = getopt(argc, argv, "p:mh")) != -1) {
+        if (c == 'm') use_mmap = true;
+        else if (c == 'p') {
+            if (!parse_range(optarg, &ra, &rb)) {
+                fprintf(stderr, "Bad -p range: '%s'\n", optarg);
+                return 2;
+            }
+            have_range = true;
+        } else {
+            usage(argv[0]);
+            return (c == 'h') ? 0 : 2;
         }
-        printf(",total_cycles,total_ns,total_ratio\n");
     }
 
-    // Print CSV data row
-    printf("%zu,%s,%lu,%lu,%f,%lu,%lu,%f,%lu",
-           pg_size,
-           argv[arg_idx],
-           (open_end - open_begin),
-           (open_end_ns - open_begin_ns),
-           (double)(open_end - open_begin) / (double)(open_end_ns - open_begin_ns),
-           (stat_end - stat_begin),
-           (stat_end_ns - stat_begin_ns),
-           (double)(stat_end - stat_begin) / (double)(stat_end_ns - stat_begin_ns),
-           file_pgs);
-#if MMAP_FILE
-    printf(",%lu,%lu,%f",
-           (map_end - map_begin),
-           (map_end_ns - map_begin_ns),
-           (double)(map_end - map_begin) / (double)(map_end_ns - map_begin_ns));
-#endif
-    if (argc == arg_idx + 2) {
-        printf(",0x%llx,%d,%lu,%lu,%f",
-               (unsigned long long)(pg_size * page_to_read),
-               page_to_read,
-               (seek_end - seek_begin),
-               (seek_end_ns - seek_begin_ns),
-               (double)(seek_end - seek_begin) / (double)(seek_end_ns - seek_begin_ns));
+    int fd = open(path, O_RDONLY);
+    if (fd < 0) die("open");
+
+    struct stat st;
+    if (fstat(fd, &st) != 0) die("fstat");
+
+    long page_sz = sysconf(_SC_PAGESIZE);
+    if (page_sz <= 0) die("sysconf");
+
+    long total_pages = (long)((st.st_size + page_sz - 1) / page_sz);
+
+    long start = 0, end = total_pages - 1;
+    if (have_range) { start = ra; end = rb; }
+    else if (have_pos_page) { start = pos_page; end = pos_page; }
+    if (start > end) { long t = start; start = end; end = t; }
+    if (start < 0) start = 0;
+    if (end >= total_pages) end = total_pages - 1;
+
+    // Select probe ONCE (no if in the hot loop)
+    probe_fn probe = NULL;
+    void *probe_ctx = NULL;
+
+    unsigned char buf = 0;
+    struct pread_ctx pctx = { .fd = fd, .buf = &buf };
+    struct mmap_ctx mctx = {0};
+
+    if (!use_mmap) {
+        probe = probe_pread;
+        probe_ctx = &pctx;
+    } else {
+        unsigned char *map = mmap(NULL, (size_t)st.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
+        if (map == MAP_FAILED) die("mmap");
+        mctx.map = (volatile unsigned char *)map;
+        probe = probe_mmap;
+        probe_ctx = &mctx;
     }
-    printf(",%lu,%lu,%f\n",
-           (total_end - map_begin),
-           (total_end_ns - map_begin_ns),
-           (double)(total_end - map_begin) / (double)(total_end_ns - map_begin_ns));
 
-    fflush(stdout);
+    // Output cycles (not ns)
+    // printf("page_index,offset_bytes,time_cycles\n");
+    printf("page_index,time_cycles\n");
 
-    close(f_map);
+    for (long p = start; p <= end; p++) {
+        off_t off = (off_t)p * (off_t)page_sz;
+        uint64_t dt = probe(probe_ctx, off);
+        // printf("%ld,%" PRIdMAX ",%" PRIu64 "\n", p, (intmax_t)off, dt);
+        printf("%ld,%" PRIu64 "\n", p, dt);
+    }
+
+    if (use_mmap) {
+        munmap((void*)mctx.map, (size_t)st.st_size);
+    }
+    close(fd);
     return 0;
 }

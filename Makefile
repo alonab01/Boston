@@ -1,27 +1,19 @@
-all: spy_on read_page spy_on_diff
+CC      := gcc
+CFLAGS  := -O2 -Wall -Wextra -std=c11 -MMD -MP
+TARGET  := read_page
+SRC     := src/read_page.c
+OBJ     := $(SRC:.c=.o)
+DEPS    := $(OBJ:.o=.d)
 
-dkr:
-	sudo docker build -t union-buster .
+all: $(TARGET)
 
-dkr-run: dkr
-	sudo docker rm -f gv1 || true
-	sudo docker run --runtime=runsc-kvm -d --name gv1 union-buster:latest
+$(TARGET): $(OBJ)
+	$(CC) $(CFLAGS) -o $@ $^
 
-dkr-native-run: dkr
-	sudo docker rm -f gv1 || true
-	sudo docker run --runtime=runc -d --name gv1 union-buster:latest
-
-dkr-exec:
-	sudo docker exec -it gv1 /bin/bash
-
-spy_on: src/spy_on.c
-	gcc -o spy_on src/spy_on.c
-
-spy_on_diff: src/spy_on_diff.c
-	gcc -o spy_on_diff src/spy_on_diff.c
-
-read_page: src/read_page.c
-	gcc -o read_page src/read_page.c
+src/%.o: src/%.c
+	$(CC) $(CFLAGS) -c -o $@ $<
 
 clean:
-	rm -f spy_on read_page spy_on_diff
+	rm -f $(TARGET) $(OBJ) $(DEPS)
+
+-include $(DEPS)
