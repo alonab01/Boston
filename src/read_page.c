@@ -31,8 +31,8 @@ static inline uint64_t tsc_start(void) {
 
     unsigned hi, lo;
     // serialize before reading tsc
-    asm volatile("lfence" ::: "memory");
-    asm volatile("rdtsc" : "=a"(lo), "=d"(hi));
+    __asm__ __volatile__("lfence" ::: "memory");
+    __asm__ __volatile__("rdtsc" : "=a"(lo), "=d"(hi));
     return ((uint64_t)hi << 32) | lo;
 }
 
@@ -54,8 +54,8 @@ static inline uint64_t tsc_end(void) {
     // return ((uint64_t)hi << 32) | lo;
     unsigned hi, lo;
     // serialize before reading tsc
-    asm volatile("lfence" ::: "memory");
-    asm volatile("rdtsc" : "=a"(lo), "=d"(hi));
+    __asm__ __volatile__("lfence" ::: "memory");
+    __asm__ __volatile__("rdtsc" : "=a"(lo), "=d"(hi));
     return ((uint64_t)hi << 32) | lo;
 }
 
