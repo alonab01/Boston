@@ -1,5 +1,5 @@
 #!/bin/bash
-VM_PATH="~/vms"
+VM_PATH="/home/alonab01/vms"
 USER="alonab01"
 
 
@@ -23,8 +23,8 @@ EOF
 
 
 #shutdown base VM
-ssh -p 2222 r$USER@localhost << EOF
-    poweroff
+ssh -p 2222  $USER@localhost << EOF
+    sudo poweroff
 EOF
 sleep 5
 
@@ -34,8 +34,8 @@ pgrep -fa 'qemu-system-x86_64.*vm.*.qcow2'
 echo ""
 
 #clone base VM to vmA and vmB
-# sudo rm -f $VM_PATH/vmA.qcow2
-# sudo rm -f $VM_PATH/vmB.qcow2
+sudo rm -f $VM_PATH/vmA.qcow2
+sudo rm -f $VM_PATH/vmB.qcow2
 
-sudo qemu-img create -f qcow2 -b $VM_PATH/base.qcow2 -F qcow2 $VM_PATH/vmA.qcow2
-sudo qemu-img create -f qcow2 -b $VM_PATH/base.qcow2 -F qcow2 $VM_PATH/vmB.qcow2
+qemu-img create -f qcow2 -b $VM_PATH/base.qcow2 -F qcow2 $VM_PATH/vmA.qcow2
+qemu-img create -f qcow2 -b $VM_PATH/base.qcow2 -F qcow2 $VM_PATH/vmB.qcow2
