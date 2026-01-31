@@ -8,7 +8,7 @@ IMAGE="alonab01/ignite_pc:latest"   # <-- change to your image name
 VM_A="vma"
 VM_B="vmb"
 
-CPUS=2
+CPUS=1
 MEMORY="2GB"
 DISK_SIZE="10GB"       # adjust if you want; this is the VM disk size in Ignite
 

@@ -7,7 +7,7 @@ TARGET_FILE="/boot/initrd.img-6.8.0-90-generic"
 # TARGET_FILE="results/txt/qemu_p1_50.txt"
 TARGET_PAGE_RANGE="0"
 SSH_OPTS="-T -q -o LogLevel=ERROR -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
-OUT_DIR="results/out"
+OUT_DIR="results/out_last_qemu"
 
 mkdir -p $OUT_DIR
 
@@ -137,7 +137,7 @@ drop_caches_host
 echo "Section 1: vmA reads from disk (host cache dropped each round)"
 : > $OUT_DIR/section1_vmA2.csv
 for i in {1..1000}; do
-  read_page_vm 2222 >> ou$OUT_DIRt/section1_vmA2.csv
+  read_page_vm 2222 >> $OUT_DIR/section1_vmA2.csv
   drop_caches_vm 2222
   drop_caches_host
 done
