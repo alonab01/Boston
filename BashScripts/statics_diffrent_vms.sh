@@ -7,8 +7,9 @@ TARGET_FILE="/boot/initrd.img-6.8.0-90-generic"
 # TARGET_FILE="results/txt/qemu_p1_50.txt"
 TARGET_PAGE_RANGE="0"
 SSH_OPTS="-T -q -o LogLevel=ERROR -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
+OUT_DIR="results/out"
 
-mkdir -p out
+mkdir -p $OUT_DIR
 
 echo "Starting two VMs (vmA and vmB)..."
 
@@ -78,29 +79,29 @@ drop_caches_vm 2223
 drop_caches_host
 
 echo "Section 1: vmA reads from disk (host cache dropped each round)"
-: > out/section1_vmA.csv
+: > $OUT_DIR/section1_vmA.csv
 for i in {1..1000}; do
-  read_page_vm 2222 >> out/section1_vmA.csv
+  read_page_vm 2222 >> $OUT_DIR/section1_vmA.csv
   drop_caches_vm 2222
   drop_caches_host
 done
 
-append_stats out/section1_vmA.csv
+append_stats $OUT_DIR/section1_vmA.csv
 
 
 
 echo "Section 2: vmB reads then vmA reads (host cache dropped before vmB)"
-: > out/section2_vmB_vmA.csv
+: > $OUT_DIR/section2_vmB_vmA.csv
 for i in {1..1000}; do
   drop_caches_host
   read_page_vm 2223 > /dev/null
-  read_page_vm 2222 >> out/section2_vmB_vmA.csv
+  read_page_vm 2222 >> $OUT_DIR/section2_vmB_vmA.csv
   drop_caches_vm 2223
   drop_caches_vm 2222
   drop_caches_host
 done
 
-append_stats out/section2_vmB_vmA.csv
+append_stats $OUT_DIR/section2_vmB_vmA.csv
 
 # shutdown (non-interactive sudo)
 ssh $SSH_OPTS -p 2222 "$USER@localhost" "sudo -n poweroff" 2>/dev/null || true
@@ -134,29 +135,29 @@ drop_caches_vm 2223
 drop_caches_host
 
 echo "Section 1: vmA reads from disk (host cache dropped each round)"
-: > out/section1_vmA2.csv
+: > $OUT_DIR/section1_vmA2.csv
 for i in {1..1000}; do
-  read_page_vm 2222 >> out/section1_vmA2.csv
+  read_page_vm 2222 >> ou$OUT_DIRt/section1_vmA2.csv
   drop_caches_vm 2222
   drop_caches_host
 done
 
-append_stats out/section1_vmA2.csv
+append_stats $OUT_DIR/section1_vmA2.csv
 
 
 
 echo "Section 2: vmB reads then vmA reads (host cache dropped before vmB)"
-: > out/section2_vmB_vmA2.csv
+: > $OUT_DIR/section2_vmB_vmA2.csv
 for i in {1..1000}; do
   drop_caches_host
   read_page_vm 2223 > /dev/null
-  read_page_vm 2222 >> out/section2_vmB_vmA2.csv
+  read_page_vm 2222 >> $OUT_DIR/section2_vmB_vmA2.csv
   drop_caches_vm 2223
   drop_caches_vm 2222
   drop_caches_host
 done
 
-append_stats out/section2_vmB_vmA2.csv
+append_stats $OUT_DIR/section2_vmB_vmA2.csv
 
 # shutdown (non-interactive sudo)
 ssh $SSH_OPTS -p 2222 "$USER@localhost" "sudo -n poweroff" 2>/dev/null || true
