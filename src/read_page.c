@@ -18,45 +18,45 @@
 // -------------------- robust cycle timer: CPUID;RDTSC  ...  RDTSCP;CPUID --------------------
 
 static inline uint64_t tsc_start(void) {
-    // unsigned hi, lo;
-    // __asm__ __volatile__(
-    //     "cpuid\n\t"        // serialize before
-    //     "rdtsc\n\t"
-    //     : "=a"(lo), "=d"(hi)
-    //     : "a"(0)
-    //     : "rbx", "rcx", "memory"
-    // );
-    // return ((uint64_t)hi << 32) | lo;
-
-
     unsigned hi, lo;
-    // serialize before reading tsc
-    __asm__ __volatile__("lfence" ::: "memory");
-    __asm__ __volatile__("rdtsc" : "=a"(lo), "=d"(hi));
+    __asm__ __volatile__(
+        "cpuid\n\t"        // serialize before
+        "rdtsc\n\t"
+        : "=a"(lo), "=d"(hi)
+        : "a"(0)
+        : "rbx", "rcx", "memory"
+    );
     return ((uint64_t)hi << 32) | lo;
+
+
+    // unsigned hi, lo;
+    // // serialize before reading tsc
+    // __asm__ __volatile__("lfence" ::: "memory");
+    // __asm__ __volatile__("rdtsc" : "=a"(lo), "=d"(hi));
+    // return ((uint64_t)hi << 32) | lo;
 }
 
 static inline uint64_t tsc_end(void) {
-    // unsigned hi, lo;
-    // __asm__ __volatile__(
-    //     "lfence\n\t"       // serialize before read
-    //     "rdtsc\n\t"
-    //     : "=a"(lo), "=d"(hi)
-    //     :
-    //     : "memory"
-    // );
-    // __asm__ __volatile__(
-    //     "cpuid\n\t"        // serialize after
-    //     :
-    //     : "a"(0)
-    //     : "rbx", "rcx", "rdx", "memory"
-    // );
-    // return ((uint64_t)hi << 32) | lo;
     unsigned hi, lo;
-    // serialize before reading tsc
-    __asm__ __volatile__("lfence" ::: "memory");
-    __asm__ __volatile__("rdtsc" : "=a"(lo), "=d"(hi));
+    __asm__ __volatile__(
+        "lfence\n\t"       // serialize before read
+        "rdtsc\n\t"
+        : "=a"(lo), "=d"(hi)
+        :
+        : "memory"
+    );
+    __asm__ __volatile__(
+        "cpuid\n\t"        // serialize after
+        :
+        : "a"(0)
+        : "rbx", "rcx", "rdx", "memory"
+    );
     return ((uint64_t)hi << 32) | lo;
+    // unsigned hi, lo;
+    // // serialize before reading tsc
+    // __asm__ __volatile__("lfence" ::: "memory");
+    // __asm__ __volatile__("rdtsc" : "=a"(lo), "=d"(hi));
+    // return ((uint64_t)hi << 32) | lo;
 }
 
 static void die(const char *msg) {
