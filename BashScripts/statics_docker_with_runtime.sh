@@ -5,7 +5,9 @@ set -euo pipefail
 # Config
 # -----------------------------
 IMAGE="alonab01/ignite_pc:latest"
-RUNTIME="${DOCKER_RUNTIME:-runsc-systrap}"   # override via env
+# RUNTIME="${DOCKER_RUNTIME:-runsc-kvm}"   # override via env
+RUNTIME="io.containerd.kata.v2"
+
 
 C_A="cta"
 C_B="ctb"
@@ -29,9 +31,6 @@ check_runtime_exists() {
 }
 
 drop_caches_host() {
-  sync
-  echo 1 | sudo tee /proc/sys/vm/drop_caches >/dev/null
-  sleep 0.1
   sync
   echo 1 | sudo tee /proc/sys/vm/drop_caches >/dev/null
   sleep 0.1
@@ -82,7 +81,7 @@ trap cleanup EXIT INT TERM
 # -----------------------------
 # Main
 # -----------------------------
-check_runtime_exists "$RUNTIME"
+# check_runtime_exists "$RUNTIME"
 
 echo "Docker runtime: $RUNTIME"
 echo "Image: $IMAGE"
