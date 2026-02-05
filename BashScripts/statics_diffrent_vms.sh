@@ -4,7 +4,6 @@ set -euo pipefail
 VM_PATH="/home/alonab01/vms"
 USER="alonab01"
 TARGET_FILE="/boot/initrd.img-6.8.0-90-generic"
-# TARGET_FILE="results/txt/qemu_p1_50.txt"
 TARGET_PAGE_RANGE="0"
 SSH_OPTS="-T -q -o LogLevel=ERROR -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
 OUT_DIR="results/out_last_qemu"
@@ -28,9 +27,6 @@ qemu-system-x86_64 -enable-kvm -m 2048 \
 sleep 45
 
 drop_caches_host() {
-  sync
-  echo 1 | sudo tee /proc/sys/vm/drop_caches >/dev/null
-  sleep 0.5
   sync
   echo 1 | sudo tee /proc/sys/vm/drop_caches >/dev/null
   sleep 0.5
