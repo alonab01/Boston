@@ -15,7 +15,7 @@ DISK_SIZE="10GB"       # adjust if you want; this is the VM disk size in Ignite
 TARGET_FILE="/boot/vmlinux-5.10.51"
 TARGET_PAGE_RANGE="0"
 
-OUT_DIR="results/out"
+OUT_DIR="results/out2"
 mkdir -p "$OUT_DIR"
 
 # -----------------------------
