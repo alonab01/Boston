@@ -26,15 +26,14 @@ static inline uint64_t tsc_start(void) {
         : "a"(0)
         : "rbx", "rcx", "memory"
     );
-    return ((uint64_t)hi << 32) | lo;
+    return ((uint64_t)hi << 32) | lo;  
+}
 
-
-    // unsigned hi, lo;
+ // unsigned hi, lo;
     // // serialize before reading tsc
     // __asm__ __volatile__("lfence" ::: "memory");
     // __asm__ __volatile__("rdtsc" : "=a"(lo), "=d"(hi));
     // return ((uint64_t)hi << 32) | lo;
-}
 
 static inline uint64_t tsc_end(void) {
     unsigned hi, lo;
@@ -52,13 +51,14 @@ static inline uint64_t tsc_end(void) {
         : "rbx", "rcx", "rdx", "memory"
     );
     return ((uint64_t)hi << 32) | lo;
+}
+
+
     // unsigned hi, lo;
     // // serialize before reading tsc
     // __asm__ __volatile__("lfence" ::: "memory");
     // __asm__ __volatile__("rdtsc" : "=a"(lo), "=d"(hi));
     // return ((uint64_t)hi << 32) | lo;
-}
-
 static void die(const char *msg) {
     perror(msg);
     exit(1);

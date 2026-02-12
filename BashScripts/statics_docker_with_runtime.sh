@@ -13,7 +13,7 @@ C_A="cta"
 C_B="ctb"
 
 ITER=1000
-OUT_DIR="results/out"
+OUT_DIR="results/out_kata"
 mkdir -p "$OUT_DIR"
 
 TARGET_FILE="/bin/whoami"

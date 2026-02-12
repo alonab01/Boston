@@ -1,9 +1,22 @@
-read_page
-spy_on
-spy_on_diff
-logs/
+*.a
+*.so
+*.so.*
+*.dylib
+*.dll
+*.exe
 
-runsc
+# dependency files (gcc -MMD)
+*.d
 
-rand0.bin
-rand1.bin
+# debug symbols
+*.out
+
+# editor/OS junk
+.vscode/
+.DS_Store
+
+
+
+results/
+
+
