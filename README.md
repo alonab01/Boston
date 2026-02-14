@@ -1,19 +1,34 @@
-# Union Buster
+
+sudo sync
+ echo 1|sudo tee /proc/sys/vm/drop_caches
+ echo 3|sudo tee /proc/sys/vm/drop_caches
+
+START QEMU:
+qemu-system-x86_64   -enable-kvm   -m 4096   -smp 2   -drive file=~/vms/vm2.qcow2,format=qcow2  -cpu host
+GENARATE QEMU:
+qemu-system-x86_64   -enable-kvm   -m 4096   -smp 2   -cdrom ~/iso/ubuntu-22.04.5-desktop-amd64.iso   -drive file=~/vms/vm2.qcow2,format=qcow2   -boot d   -display gtk
+
+GYVISOR:
+docker run -d --name prober-kvm2 --runtime=runsc-kvm  lab-prober:mysql84 bash -lc "sleep infinity"
+docker run -d --name prober-systrap2 --runtime=runsc-systrap lab-prober:mysql84 bash -lc "sleep infinity"
+
+DOCKER:
+delete:
+docker rm -f $(docker ps -aq) 
+docker rmi IMAGE_ID
 
 
-# redux before NESD '26
-
-bigger sample sizes for each experiment: >500
-Multiple files and pages instead of one file,page
-    eliminates need for cache erase on host. 
-    -> read_page gets a digit, encodes it into a set of files Xth page.
-    -> spy_on checks all these files, spits out the timing.
-
-    -> I plot the times for page expected to be in cache vs. those not expected to be in cache
-
-Run on server with SSD?
+IGNITE:
+docker build -f Dockerfile --build-arg BASE_IMAGE=weaveworks/ignite-ubuntu:latest --build-arg TOOL=detection -t ignite_prober .
+docker save ignite_prober:latest | sudo ctr -n firecracker images import -
+sudo ctr -n firecracker images ls | grep ignite_prober
+sudo ignite image import ignite_prober:latest
 
 
-create vmA.qcow:
+VENV:
+source .venv/bin/activate
+deactivate
 
-sudo qemu-img create -f qcow2 -b base.qcow2 -F qcow2 vmA.qcow2
+
+STUFF:
+> /dev/null
