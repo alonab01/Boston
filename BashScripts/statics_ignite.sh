@@ -14,8 +14,8 @@ DISK_SIZE="10GB"       # adjust if you want; this is the VM disk size in Ignite
 
 TARGET_FILE="/boot/vmlinux-5.10.51"
 TARGET_PAGE_RANGE="0"
-
-OUT_DIR="results/out2"
+ITER="${ITER:-1000}"
+OUT_DIR="${OUT_DIR:-results/out}"
 mkdir -p "$OUT_DIR"
 
 # -----------------------------
@@ -123,7 +123,7 @@ run_phase() {
   local f1="$OUT_DIR/section1_${VM_A}_${suffix}.csv"
   : > "$f1"
 
-  for i in {1..1000}; do
+  for i in $(seq 1 "$ITER"); do
     read_page_vm "$VM_A" >> "$f1"
     drop_caches_vm "$VM_A"
     drop_caches_host
@@ -134,7 +134,7 @@ run_phase() {
   local f2="$OUT_DIR/section2_${VM_B}_${VM_A}_${suffix}.csv"
   : > "$f2"
 
-  for i in {1..1000}; do
+  for i in $(seq 1 "$ITER"); do
     drop_caches_host
     read_page_vm "$VM_B" > /dev/null
     read_page_vm "$VM_A" >> "$f2"

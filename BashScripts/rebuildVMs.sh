@@ -3,14 +3,19 @@ VM_PATH="/home/alonab01/vms"
 USER="alonab01"
 
 
+qemu-system-x86_64 -enable-kvm -m 2048 \
+  -drive file="$VM_PATH/vmA.qcow2",if=virtio \
+  -boot c \
+  -nic user,hostfwd=tcp:127.0.0.1:2222-:22 &
+
+
 #start base VM
-qemu-system-x86_64 \
--enable-kvm \
--m 2048 \
--drive file=$VM_PATH/base.qcow2,if=virtio \
--boot c \
--nic user,hostfwd=tcp:127.0.0.1:2222-:22&
--cpu host
+qemu-system-x86_64 -enable-kvm \
+    -m 2048 \
+    -drive file=$VM_PATH/base.qcow2,if=virtio \
+    -boot c \
+    -nic user,hostfwd=tcp:127.0.0.1:2222-:22 \
+    -cpu host &
 
 sleep 40  # wait for VM to boot up
 

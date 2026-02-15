@@ -2,8 +2,6 @@
 *.d
 *.o
 
-# editor/OS junk
-.vscode/
 
 #venv
 .venv/

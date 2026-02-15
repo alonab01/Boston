@@ -6,13 +6,16 @@ USER="alonab01"
 TARGET_FILE="/boot/initrd.img-6.8.0-90-generic"
 TARGET_PAGE_RANGE="0"
 SSH_OPTS="-T -q -o LogLevel=ERROR -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
-OUT_DIR="results/out"
+OUT_DIR="${OUT_DIR:-results/out}"
+
+CACHE_STATE="${CACHE_STATE:-none}"
+ITER="${ITER:-1000}"
+
 
 mkdir -p $OUT_DIR
 
 echo "Starting two VMs (vmA and vmB)..."
 
-CACHE_STATE="none"
 
 qemu-system-x86_64 -enable-kvm -m 2048 \
   -drive file="$VM_PATH/vmA.qcow2",cache=$CACHE_STATE,if=virtio \
@@ -24,24 +27,20 @@ qemu-system-x86_64 -enable-kvm -m 2048 \
   -boot c \
   -nic user,hostfwd=tcp:127.0.0.1:2223-:22 >/dev/null 2>&1 &
 
-# #   -cache=none \
 
 sleep 45
 
 drop_caches_host() {
   sync
   echo 1 | sudo tee /proc/sys/vm/drop_caches >/dev/null
-  sleep 0.5
+  sleep 0.1
 }
 
 drop_caches_vm() {
     local port="$1"
     ssh $SSH_OPTS -p "$port" "$USER@localhost" \
     " echo 1 | sudo tee /proc/sys/vm/drop_caches >/dev/null" 2>/dev/null
-    sleep 0.5
-    ssh $SSH_OPTS -p "$port" "$USER@localhost" \
-    " echo 1 | sudo tee /proc/sys/vm/drop_caches >/dev/null" 2>/dev/null
-    sleep 0.5
+    sleep 0.1
 }
 
 read_page_vm() {
@@ -77,86 +76,31 @@ drop_caches_vm 2223
 drop_caches_host
 
 echo "Section 1: vmA reads from disk (host cache dropped each round)"
-: > $OUT_DIR/section1_vmA_$CACHE_STATE.csv
-for i in {1..1000}; do
-  read_page_vm 2222 >> $OUT_DIR/section1_vmA_$CACHE_STATE.csv
+: > $OUT_DIR/QEMU_vmA_$CACHE_STATE.csv
+for i in $(seq 1 "$ITER"); do
+  read_page_vm 2222 >> $OUT_DIR/QEMU_vmA_$CACHE_STATE.csv
   drop_caches_vm 2222
   drop_caches_host
 done
 
-append_stats $OUT_DIR/section1_vmA_$CACHE_STATE.csv
+append_stats $OUT_DIR/QEMU_vmA_$CACHE_STATE.csv
 
 
 
 echo "Section 2: vmB reads then vmA reads (host cache dropped before vmB)"
-: > $OUT_DIR/section2_vmB_vmA_$CACHE_STATE.csv
-for i in {1..1000}; do
+: > $OUT_DIR/QEMU_vmB_vmA_$CACHE_STATE.csv
+for i in $(seq 1 "$ITER"); do
   drop_caches_host
   read_page_vm 2223 > /dev/null
-  read_page_vm 2222 >> $OUT_DIR/section2_vmB_vmA_$CACHE_STATE.csv
+  read_page_vm 2222 >> $OUT_DIR/QEMU_vmB_vmA_$CACHE_STATE.csv
   drop_caches_vm 2223
   drop_caches_vm 2222
   drop_caches_host
 done
 
-append_stats $OUT_DIR/section2_vmB_vmA_$CACHE_STATE.csv
+append_stats $OUT_DIR/QEMU_vmB_vmA_$CACHE_STATE.csv
 
 # shutdown (non-interactive sudo)
 ssh $SSH_OPTS -p 2222 "$USER@localhost" "sudo -n poweroff" 2>/dev/null || true
 ssh $SSH_OPTS -p 2223 "$USER@localhost" "sudo -n poweroff" 2>/dev/null || true
 
-
-###################################################################################
-sleep 100
-
-
-echo "Starting two VMs (vmA and vmB)..."
-$CACHE_STATE=writeback
-qemu-system-x86_64 -enable-kvm -m 2048 \
-  -drive file="$VM_PATH/vmA.qcow2",cache=$CACHE_STATE,if=virtio \
-  -boot c \
-  -nic user,hostfwd=tcp:127.0.0.1:2222-:22 >/dev/null 2>&1 &
-
-qemu-system-x86_64 -enable-kvm -m 2048 \
-  -drive file="$VM_PATH/vmB.qcow2",cache=$CACHE_STATE,if=virtio \
-  -boot c \
-  -nic user,hostfwd=tcp:127.0.0.1:2223-:22 >/dev/null 2>&1 &
-
-# #   -cache=none \
-
-sleep 45
-
-
-# Make sure both VMs start from cold-ish cache
-drop_caches_vm 2222
-drop_caches_vm 2223
-drop_caches_host
-
-echo "Section 1: vmA reads from disk (host cache dropped each round)"
-: > $OUT_DIR/section1_vmA2_$CACHE_STATE.csv
-for i in {1..1000}; do
-  read_page_vm 2222 >> $OUT_DIR/section1_vmA2_$CACHE_STATE.csv
-  drop_caches_vm 2222
-  drop_caches_host
-done
-
-append_stats $OUT_DIR/section1_vmA2_$CACHE_STATE.csv
-
-
-
-echo "Section 2: vmB reads then vmA reads (host cache dropped before vmB)"
-: > $OUT_DIR/section2_vmB_vmA2_$CACHE_STATE.csv
-for i in {1..1000}; do
-  drop_caches_host
-  read_page_vm 2223 > /dev/null
-  read_page_vm 2222 >> $OUT_DIR/section2_vmB_vmA2_$CACHE_STATE.csv
-  drop_caches_vm 2223
-  drop_caches_vm 2222
-  drop_caches_host
-done
-
-append_stats $OUT_DIR/section2_vmB_vmA2_$CACHE_STATE.csv
-
-# shutdown (non-interactive sudo)
-ssh $SSH_OPTS -p 2222 "$USER@localhost" "sudo -n poweroff" 2>/dev/null || true
-ssh $SSH_OPTS -p 2223 "$USER@localhost" "sudo -n poweroff" 2>/dev/null || true

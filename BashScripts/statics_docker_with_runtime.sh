@@ -5,15 +5,14 @@ set -euo pipefail
 # Config
 # -----------------------------
 IMAGE="alonab01/ignite_pc:latest"
-# RUNTIME="${DOCKER_RUNTIME:-runsc-kvm}"   # override via env
-RUNTIME="io.containerd.kata.v2"
+RUNTIME="${DOCKER_RUNTIME:-runc}"   # override via env
 
 
 C_A="cta"
 C_B="ctb"
 
-ITER=1000
-OUT_DIR="results/out_kata"
+ITER="${ITER:-1000}"
+OUT_DIR="${OUT_DIR:-results/out}"
 mkdir -p "$OUT_DIR"
 
 TARGET_FILE="/bin/whoami"
