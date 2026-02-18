@@ -76,29 +76,29 @@ drop_caches_vm 2223
 drop_caches_host
 
 echo "Section 1: vmA reads from disk (host cache dropped each round)"
-: > $OUT_DIR/QEMU_vmA_$CACHE_STATE.csv
+: > $OUT_DIR/section1_QEMU_vmA_$CACHE_STATE.csv
 for i in $(seq 1 "$ITER"); do
-  read_page_vm 2222 >> $OUT_DIR/QEMU_vmA_$CACHE_STATE.csv
+  read_page_vm 2222 >> $OUT_DIR/section1_QEMU_vmA_$CACHE_STATE.csv
   drop_caches_vm 2222
   drop_caches_host
 done
 
-append_stats $OUT_DIR/QEMU_vmA_$CACHE_STATE.csv
+append_stats $OUT_DIR/section1_QEMU_vmA_$CACHE_STATE.csv
 
 
 
 echo "Section 2: vmB reads then vmA reads (host cache dropped before vmB)"
-: > $OUT_DIR/QEMU_vmB_vmA_$CACHE_STATE.csv
+: > $OUT_DIR/section2_QEMU_vmB_vmA_$CACHE_STATE.csv
 for i in $(seq 1 "$ITER"); do
   drop_caches_host
   read_page_vm 2223 > /dev/null
-  read_page_vm 2222 >> $OUT_DIR/QEMU_vmB_vmA_$CACHE_STATE.csv
+  read_page_vm 2222 >> $OUT_DIR/section2_QEMU_vmB_vmA_$CACHE_STATE.csv
   drop_caches_vm 2223
   drop_caches_vm 2222
   drop_caches_host
 done
 
-append_stats $OUT_DIR/QEMU_vmB_vmA_$CACHE_STATE.csv
+append_stats $OUT_DIR/section2_QEMU_vmB_vmA_$CACHE_STATE.csv
 
 # shutdown (non-interactive sudo)
 ssh $SSH_OPTS -p 2222 "$USER@localhost" "sudo -n poweroff" 2>/dev/null || true
