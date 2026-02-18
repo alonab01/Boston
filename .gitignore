@@ -7,8 +7,6 @@
 .venv/
 
 # Results
-results/
-*.csv
 *.png
 
 # VS Code

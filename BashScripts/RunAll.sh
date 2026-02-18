@@ -27,7 +27,7 @@ echo "[3/3] Docker statistic per runtime"
 # runc
 OUT_DIR=results/out/docker ITER="$ITER_ALL" BashScripts/statics_docker_with_runtime.sh
 
-# gVisor 
+# # gVisor 
 OUT_DIR=results/out/gvisor_kvm  RUNTIME=runsc-kvm ITER="$ITER_ALL" BashScripts/statics_docker_with_runtime.sh
 
 OUT_DIR=results/out/gvisor_systrap  RUNTIME=runsc-systrap ITER="$ITER_ALL" BashScripts/statics_docker_with_runtime.sh

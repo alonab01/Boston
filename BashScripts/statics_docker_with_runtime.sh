@@ -5,7 +5,7 @@ set -euo pipefail
 # Config
 # -----------------------------
 IMAGE="alonab01/ignite_pc:latest"
-RUNTIME="${DOCKER_RUNTIME:-runc}"   # override via env
+RUNTIME="${RUNTIME:-runc}"   # override via env
 
 
 C_A="cta"
