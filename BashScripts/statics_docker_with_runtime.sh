@@ -4,7 +4,7 @@ set -euo pipefail
 # -----------------------------
 # Config
 # -----------------------------
-IMAGE="alonab01/ignite_pc:latest"
+IMAGE="${IMAGE:-alonab01/ignite_pc:latest}"
 RUNTIME="${RUNTIME:-runc}"   # override via env
 
 
@@ -12,10 +12,10 @@ C_A="cta"
 C_B="ctb"
 
 ITER="${ITER:-1000}"
-OUT_DIR="${OUT_DIR:-results/out}"
+OUT_DIR="${OUT_DIR:-results/out/senity_check}"
 mkdir -p "$OUT_DIR"
 
-TARGET_FILE="/bin/whoami"
+TARGET_FILE="${TARGET_FILE:-/bin/whoami}"
 TARGET_PAGE_RANGE="0"
 
 # -----------------------------

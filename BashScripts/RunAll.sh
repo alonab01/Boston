@@ -40,6 +40,9 @@ ITER_ALL=10000
 sudo kata-manager -S clh
 OUT_DIR=results/out/kata_clh  RUNTIME=io.containerd.kata.v2 ITER="$ITER_ALL" BashScripts/statics_docker_with_runtime.sh
 
+# kata + FC
+sudo kata-manager -S fc
+
 echo "Done."
 
 

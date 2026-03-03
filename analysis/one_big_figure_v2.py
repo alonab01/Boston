@@ -154,8 +154,44 @@ def _geom_mid(x1: float, x2: float) -> float:
     return 0.5 * (x1 + x2)
 
 
-def add_pair_arrow(ax, x1, x2, y, color, label=None, lw=2.6, text_size=12):
-    """Horizontal <-> arrow from x1 to x2 at fixed y (ECDF space)."""
+def add_pair_arrow(ax, x1, x2, y, color, label=None,
+                   lw=2.6, text_size=12,
+                   small_gap_rel=0.04):
+    """
+    If medians are far: draw <-> between x1 and x2.
+    If medians are very close: draw a single -> from left (min) to midpoint.
+    Always keep env name label (if provided).
+    """
+    x1 = float(x1); x2 = float(x2)
+    lo = min(x1, x2)
+    hi = max(x1, x2)
+    rel_gap = (hi - lo) / max(lo, 1e-12)
+
+    xm = _geom_mid(x1, x2)
+
+    if rel_gap < small_gap_rel:
+        # close -> single arrow from left to midpoint
+        ax.annotate(
+            "",
+            xy=(xm, y),
+            xytext=(lo, y),
+            arrowprops=dict(arrowstyle="->", color=color, lw=lw),
+            annotation_clip=False,
+        )
+        if label:
+            ax.text(
+                xm, min(0.995, y + 0.02),
+                label,
+                color=color,
+                ha="center",
+                va="bottom",
+                fontsize=text_size,
+                fontweight="bold",
+                clip_on=False,
+            )
+        return
+
+    # normal -> double arrow
     ax.annotate(
         "",
         xy=(x1, y),
@@ -164,7 +200,6 @@ def add_pair_arrow(ax, x1, x2, y, color, label=None, lw=2.6, text_size=12):
         annotation_clip=False,
     )
     if label:
-        xm = _geom_mid(x1, x2)
         ax.text(
             xm, min(0.995, y + 0.02),
             label,
