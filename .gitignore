@@ -7,10 +7,10 @@
 .venv/
 
 # Results
-*.png
+# *.png
 
 # VS Code
 .vscode/
 
-
+*/__pycache__/
 
